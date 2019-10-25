@@ -1,0 +1,9 @@
+{
+    "apiVersion": "windows.k8s.io/v1alpha1",
+    "credspec": ${CREDSPEC},
+    "kind": "GMSACredentialSpec",
+    "metadata": {
+        "name": "${CREDSPECNAME}",
+        "namespace" : "${NAMESPACE}"
+    }
+}

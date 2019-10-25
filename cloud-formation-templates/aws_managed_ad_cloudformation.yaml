@@ -1,0 +1,83 @@
+# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy of this
+# software and associated documentation files (the "Software"), to deal in the Software
+# without restriction, including without limitation the rights to use, copy, modify,
+# merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+AWSTemplateFormatVersion: "2010-09-09"
+
+Description: Amazon - Managed Microsoft Active Directory.
+
+Metadata:
+  "AWS::CloudFormation::Interface":
+    ParameterGroups:
+      - Label:
+          default: Active Directory Settings
+        Parameters:
+          - DirectoryName
+          - Edition
+          - ShortName
+      - Label:
+          default: VPC Settings
+        Parameters:
+          - VpcId
+          - Subnets
+
+Parameters:
+  DirectoryName:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: ""
+    Description: "The fully qualified domain name for the AWS Managed Microsoft AD directory(Example: corp.example.com)."
+
+  Edition:
+    Type: String
+    Default: Standard
+    Description: AWS Managed Microsoft AD is available in two editions, Standard and Enterprise.
+    AllowedValues:
+      - Standard
+      - Enterprise
+
+  ShortName:
+    Type: String
+    Default: ""
+    Description: "Microsoft Active Directory NetBIOS Name."
+
+  Subnets:
+    Type: "List<AWS::EC2::Subnet::Id>"
+    Description: The subnets to launch the Active Directory. Should be maximum of two subnets.
+
+  VpcId:
+    Type: "AWS::EC2::VPC::Id"
+    Description: The VPC of the Active directory. Use the Linux worker nodes VPC.
+
+Resources:
+  myDirectory:
+    Type: "AWS::DirectoryService::MicrosoftAD"
+    Properties:
+      Name: !Ref DirectoryName
+      Edition: !Ref Edition
+      Password: "{{resolve:ssm-secure:gMSA-blog-ADAdminPassword:1}}"
+      ShortName: !Ref ShortName
+      VpcSettings:
+        SubnetIds: !Ref Subnets
+        VpcId: !Ref VpcId
+
+Outputs:
+  Alias:
+    Description: Directory alias.
+    Value:
+      !GetAtt myDirectory.Alias
+
+  DnsIpAddresses:
+    Description: The IP addresses of the DNS servers for the directory.
+    Value:
+      !Join [",", !GetAtt myDirectory.DnsIpAddresses]

@@ -1,0 +1,173 @@
+# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy of this
+# software and associated documentation files (the "Software"), to deal in the Software
+# without restriction, including without limitation the rights to use, copy, modify,
+# merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+# The service account for the webhook
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ${NAME}
+  namespace: ${NAMESPACE}
+
+---
+
+# The RBAC role that the webhook needs to:
+#  * read GMSA custom resources
+#  * check authorizations to use GMSA cred specs
+kind: ClusterRole
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ${NAMESPACE}-${NAME}-gMSA-Cluster-Role
+rules:
+- apiGroups: ["windows.k8s.io"]
+  resources: ["gmsacredentialspecs"]
+  verbs: ["get"]
+- apiGroups: ["authorization.k8s.io"]
+  resources: ["localsubjectaccessreviews"]
+  verbs: ["create"]
+
+---
+
+# Bind the RBAC role to the webhook's service account
+kind: ClusterRoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: ${NAMESPACE}-${NAME}-binding-to-${NAMESPACE}-${NAME}-gMSA-Cluster-Role
+  namespace: ${NAMESPACE}
+subjects:
+- kind: ServiceAccount
+  name: ${NAME}
+  namespace: ${NAMESPACE}
+roleRef:
+  kind: ClusterRole
+  name: ${NAMESPACE}-${NAME}-gMSA-Cluster-Role
+  apiGroup: rbac.authorization.k8s.io
+
+---
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ${NAME}
+  namespace: ${NAMESPACE}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ${NAME}
+  template:
+    metadata:
+      labels:
+        app: ${NAME}
+    spec:
+      serviceAccountName: ${NAME}
+      nodeSelector:
+        beta.kubernetes.io/os: linux
+      containers:
+      - name: ${NAME}
+        image: wk88/k8s-gmsa-webhook:v1.14
+        imagePullPolicy: IfNotPresent
+        readinessProbe:
+          httpGet:
+            scheme: HTTPS
+            path: /health
+            port: 443
+        ports:
+        - containerPort: 443
+        volumeMounts:
+          - name: tls
+            mountPath: "/tls"
+            readOnly: true
+        env:
+          - name: TLS_KEY
+            value: /tls/key
+          - name: TLS_CRT
+            value: /tls/crt
+      volumes:
+      - name: tls
+        secret:
+          secretName: ${SECRETNAME}
+          items:
+          - key: key.pem
+            path: key
+          - key: cert.pem
+            path: crt
+
+---
+
+apiVersion: v1
+kind: Service
+metadata:
+  name: ${NAME}
+  namespace: ${NAMESPACE}
+spec:
+  ports:
+  - port: 443
+    targetPort: 443
+  selector:
+    app: ${NAME}
+
+---
+
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: ${NAME}
+webhooks:
+- name: admission-webhook.windows-gmsa.sigs.k8s.io
+  clientConfig:
+    service:
+      name: ${NAME}
+      namespace: ${NAMESPACE}
+      path: "/validate"
+    caBundle: ${CA_BUNDLE}
+  rules:
+  - operations: ["CREATE", "UPDATE"]
+    apiGroups: [""]
+    apiVersions: ["*"]
+    resources: ["pods"]
+  failurePolicy: Fail
+  # don't run on ${NAMESPACE}
+  namespaceSelector:
+    matchExpressions:
+      - key: gmsa-webhook
+        operator: NotIn
+        values: [disabled]
+
+---
+
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  name: ${NAME}
+webhooks:
+- name: admission-webhook.windows-gmsa.sigs.k8s.io
+  clientConfig:
+    service:
+      name: ${NAME}
+      namespace: ${NAMESPACE}
+      path: "/mutate"
+    caBundle: ${CA_BUNDLE}
+  rules:
+  - operations: ["CREATE"]
+    apiGroups: [""]
+    apiVersions: ["*"]
+    resources: ["pods"]
+  failurePolicy: Fail
+  # don't run on ${NAMESPACE}
+  namespaceSelector:
+    matchExpressions:
+    - key: gmsa-webhook
+      operator: NotIn
+      values: [disabled]

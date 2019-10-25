@@ -1,0 +1,186 @@
+# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+#
+# Permission is hereby granted, free of charge, to any person obtaining a copy of this
+# software and associated documentation files (the "Software"), to deal in the Software
+# without restriction, including without limitation the rights to use, copy, modify,
+# merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+# permit persons to whom the Software is furnished to do so.
+#
+# THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+# INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+# PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+# HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+# OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
+# SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+AWSTemplateFormatVersion: '2010-09-09'
+
+Description: This example template describes an Amazon EC2 Systems Manager document.
+  It contains a sample script that can be used to create gMSA user and generate a credential spec for that user. 
+  This document uses the domain user name and password that is stored in the SSM parameter. 
+
+Metadata:
+  "AWS::CloudFormation::Interface":
+    ParameterGroups:
+
+      - Label:
+          default: Active Directory Settings
+        Parameters:
+          - DirectoryNameParameter
+          - ADUserNameParameter
+          - ADUserPasswordParameter
+
+      - Label:
+          default: gMSA Settings
+        Parameters:
+          - gMSAAccountName
+          - CredSpecAdditionalAccounts
+          - gMSAADSecurityGroup
+
+Parameters:
+
+  DirectoryNameParameter:
+    Description: 'SSM Parameter name to use for Active Directory Name:'
+    MaxLength: '1024'
+    MinLength: '1'
+    Type: AWS::SSM::Parameter::Value<String>
+
+  ADUserNameParameter:
+    Description: 'SSM Parameter name to use for AD User name:'
+    MaxLength: '1024'
+    MinLength: '1'
+    Type: AWS::SSM::Parameter::Value<String>
+
+  ADUserPasswordParameter:
+    AllowedPattern: (?!^([aA][wW][sS]|[sS][sS][mM]))(?=^[-a-zA-Z0-9_.]*$).*
+    ConstraintDescription: please specify a valid Parameter Store name.
+    Description: 'SSM Parameter name to use for AD User password:'
+    MaxLength: '1024'
+    MinLength: '1'
+    Type: String
+
+  gMSAAccountName:
+    Type: String
+    Default: ""
+    Description: 'group Managed Service Account name (gMSA).'
+
+  CredSpecAdditionalAccounts:
+    Type: String
+    Default: ""
+    Description: 'List of comma separated group Managed Service Accounts (gMSA) to be included in credential specification. If they do not exist already, it will be created.'
+
+  gMSAADSecurityGroup:
+    Type: String
+    Default: ""
+    Description: 'Existing Active Directory security group to controls the access of gMSA account.'
+
+Resources:
+
+  Document:
+    Type: AWS::SSM::Document
+
+    Properties:
+      DocumentType: Command
+      Content:
+        schemaVersion: '2.2'
+        description: 'gMSA CredentialSpec generation SSM document'
+
+        parameters:
+
+          DirectoryName:
+            type: String
+            default: !Ref DirectoryNameParameter
+
+          ADUserName:
+            type: String
+            default: !Ref ADUserNameParameter
+
+          ADUserPasswordParam:
+            type: String
+            default: !Ref ADUserPasswordParameter
+
+          gMSAAccount:
+            type: 'String'
+            default: !Ref gMSAAccountName
+            description: 'gMSA user account name to which credential spec to be generated. If it does not exist, it will be created.'
+
+          AdditionalCredSpecAccounts:
+            type: 'String'
+            default: !Ref CredSpecAdditionalAccounts
+            description: 'Additional comma separated gMSA Accounts to be included in credentialspec. If they do not exist, it will be created.'
+
+          ADSecurityGroup:
+            type: 'String'
+            default: !Ref gMSAADSecurityGroup
+            description: 'Existing Active Directory security group to controls the access of gMSA account.'
+
+        mainSteps:
+
+        - action: 'aws:runPowerShellScript'
+          precondition:
+            StringEquals:
+              - platformType
+              - Windows
+          name: 'InstallCredspecModule'
+          inputs:
+            runCommand:
+            - 'Install-Module -Name CredentialSpec -Force -Confirm:$false -Scope CurrentUser'
+
+        - action: 'aws:runPowerShellScript'
+          precondition:
+            StringEquals:
+              - platformType
+              - Windows
+          name: 'GenerateCredspec'
+          inputs:
+            runCommand:
+            - "Fn::Sub": |
+                  $ErrorActionPreference = "Stop"
+                  try {
+                    $domain = "{{DirectoryName}}"
+                    $username = "{0}\{1}" -f $domain, "{{ADUserName}}"
+                    $password = (Get-SSMParameterValue -Name "{{ADUserPasswordParam}}" -WithDecryption $True).Parameters[0].Value | ConvertTo-SecureString -asPlainText -Force
+                    $credential = New-Object System.Management.Automation.PSCredential($username, $password)
+                    $account = "{{gMSAAccount}}"
+                    $additionalAccounts = "{{AdditionalCredSpecAccounts}}"
+                    $securityGroup = "{{ADSecurityGroup}}"
+ 
+                    if(-not (Get-ADServiceAccount -Filter "Name -eq '$account'")) {
+                      New-ADServiceAccount -Name $account -PrincipalsAllowedToRetrieveManagedPassword "$securityGroup" -DNSHostName $domain -Credential $credential
+                    }
+
+                    if ($additionalAccounts) {
+                      $accounts = $additionalAccounts.Split(",")
+                      foreach($additionalAccount in $accounts) {
+                        if(-not (Get-ADServiceAccount -Filter "Name -eq '$additionalAccount'")) {
+                          New-ADServiceAccount -Name $additionalAccount -PrincipalsAllowedToRetrieveManagedPassword "$securityGroup" -DNSHostName $domain -Credential $credential
+                        }
+                      }
+
+                      New-CredentialSpec -AccountName $account -AdditionalAccounts $accounts | Out-Null
+                    } else {
+                      New-CredentialSpec -AccountName $account | Out-Null
+                    }
+
+                    $credSpecFile = Get-CredentialSpec | Where-Object {$_.Name -like  "*_$account.json"}
+
+                    if($credSpecFile) {
+                      Write-Output (Get-Content $credSpecFile.Path)
+                    } else {
+                      Write-Error "CredentialSpec did not get generated for account : $account"
+                    }
+                  } catch [Exception]{
+                    Write-Output $_.Exception.ToString()
+                    Write-Output 'Command execution failed.'
+                    $host.SetShouldExit(1)
+                  }
+
+      DocumentType: Command
+
+Outputs:
+
+  DocumentName:
+    Description: The name of the document.
+    Export:
+      Name: !Sub '${AWS::StackName}-Document'
+    Value: !Ref 'Document'
