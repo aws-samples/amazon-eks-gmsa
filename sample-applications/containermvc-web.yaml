@@ -21,7 +21,7 @@ metadata:
   name: containermvc-web
   namespace: ${NAMESPACE}
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: containermvc-web
@@ -39,7 +39,7 @@ spec:
       serviceAccountName: ${SERVICEACCOUNTNAME}
       containers:
       - image: containermvc-web:latest
-        imagePullPolicy: never
+        imagePullPolicy: Never
         name: containermvc-web
         env:
           - name: connectionstring

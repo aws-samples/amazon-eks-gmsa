@@ -143,10 +143,11 @@ Resources:
                     $credential = New-Object System.Management.Automation.PSCredential($username, $password)
                     $account = "{{gMSAAccount}}"
                     $additionalAccounts = "{{AdditionalCredSpecAccounts}}"
-                    $securityGroup = "{{ADSecurityGroup}}"
- 
+                    $adGroup = "{{ADSecurityGroup}}"
+                    $securityGroup = Get-ADComputer $env:computername | Get-ADPrincipalGroupMembership  | Where {$_.Name -like "$adGroup" + "*"} | select objectGUID -First 1
+
                     if(-not (Get-ADServiceAccount -Filter "Name -eq '$account'")) {
-                      New-ADServiceAccount -Name $account -PrincipalsAllowedToRetrieveManagedPassword "$securityGroup" -DNSHostName $domain -Credential $credential
+                      New-ADServiceAccount -Name $account -PrincipalsAllowedToRetrieveManagedPassword $securityGroup.objectGUID.Guid -DNSHostName $domain -Credential $credential
                     }
 
                     if ($additionalAccounts) {

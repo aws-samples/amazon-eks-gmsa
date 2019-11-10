@@ -3,7 +3,7 @@ This documemt gives list of steps to deploy credspec resources and gMSA webhook.
 *Set Working Directory to ./amazon-eks-gmsa/eks-deployments/patch-coredns*
 
 ```powershell
-$directoryName = aws ssm get-parameter --name $directorNameParam --query "Parameter.Value" --output text
+$directoryName = aws ssm get-parameter --name $directoryNameParam --query "Parameter.Value" --output text
 
 ./Patch-Coredns.ps1 -ActiveDirectoryDNS "$directoryName" -DNSServerIPs $dnsIPAddresses.Replace(',',' ')
 ```

@@ -13,3 +13,14 @@ aws ssm list-command-invocations --command-id $containersBuildCommandId
 ```powershell
 ./Deploy-Applications.ps1 -Namespace $gMSAnamespace -ServiceAccount $serviceaccount -CredSpecResourceName "$credspecResourceName" -SQLSAPassword "$sqlSAPassword" -GMSAUser "$adDirectoryShortName\$gMSAAccountName`$" 
 ```
+
+### Validate the application deployments
+```powershell
+kubectl get pods -n $gMSAnamespace
+kubectl get services -n $gMSAnamespace
+
+##### ACTION REQUIRED - START #####
+# Access the containermvc externalIP in browser.
+# DNS records take sometime. Access it after a while.
+##### ACTION REQUIRED - END #####
+```

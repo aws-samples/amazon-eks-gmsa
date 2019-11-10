@@ -36,6 +36,9 @@ Follow the instructions from [./amazon-eks-gmsa/eks-deployments/README.md](https
 # 4. Deploy Sample Applications
 Follow the instructions from [./amazon-eks-gmsa/sample-applications/README.md](https://github.com/aws-samples/amazon-eks-gmsa/blob/master/sample-applications/README.md)
 
+# 5. Troubleshooting
+For troubleshooting, please follow the steps [here](https://docs.microsoft.com/en-us/virtualization/windowscontainers/manage-containers/gmsa-troubleshooting).
+ 
 ## License
 
 This project is licensed under the MIT-0 License.

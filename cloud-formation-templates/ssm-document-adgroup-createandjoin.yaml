@@ -16,8 +16,9 @@
 AWSTemplateFormatVersion: '2010-09-09'
 
 Description: This example template describes an Amazon EC2 Systems Manager document.
-  It contains a sample script that can be used to join an EC2 instance to an Active
-  Directory domain. This document uses the domain user name and password that is stored in the SSM parameter. 
+  It contains a sample script that can be used to create an Active
+  Directory security group and adds the instance to the newly created group. This document
+  uses the domain user name and password that is stored in the SSM parameter. 
 
 Metadata:
   "AWS::CloudFormation::Interface":
@@ -29,7 +30,11 @@ Metadata:
           - DirectoryNameParameter
           - ADUserNameParameter
           - ADUserPasswordParameter
-          - ADDNSIPAddressesParameter
+
+      - Label:
+          default: gMSA Settings
+        Parameters:
+          - gMSAADSecurityGroup
 
 Parameters:
 
@@ -53,11 +58,9 @@ Parameters:
     MinLength: '1'
     Type: String
 
-  ADDNSIPAddressesParameter:
-    Description: 'SSM Parameter name to use for AD DNS IP server addresses:'
-    MaxLength: '1024'
-    MinLength: '1'
-    Type: AWS::SSM::Parameter::Value<String>
+  gMSAADSecurityGroup:
+    Type: String
+    Description: 'Active Directory security group to join the instance, that controls access to the gMSA password.'
 
 Resources:
 
@@ -85,14 +88,14 @@ Resources:
             type: String
             default: !Ref ADUserPasswordParameter
 
-          ADDNSIPAddresses:
+          ADSecurityGroup:
             type: String
-            default: !Ref ADDNSIPAddressesParameter
+            default: !Ref gMSAADSecurityGroup
 
         mainSteps:
 
         - action: aws:runPowerShellScript
-          name: GenerateDomainJoinSSMDoc
+          name: CreateAndJoinADSecurityGroup
           precondition:
             StringEquals:
              - platformType
@@ -100,37 +103,38 @@ Resources:
           inputs:
             runCommand:
             - "Fn::Sub": |
-                # Example PowerShell script to domain join a Windows instance securely
+                # Example PowerShell script to create an AD security group.
                 $ErrorActionPreference = "Stop"
                 try {
                     # Retrieve configuration values from parameters
                     $domain = "{{DirectoryName}}"
                     $username = "{0}\{1}" -f $domain, "{{ADUserName}}"
                     $password = (Get-SSMParameterValue -Name "{{ADUserPasswordParam}}" -WithDecryption $True).Parameters[0].Value | ConvertTo-SecureString -asPlainText -Force
-                    $ipdns = "{{ADDNSIPAddresses}}"
+
+                    $gMSASecurityGroup = "{{ADSecurityGroup}}"
 
                     # Create a System.Management.Automation.PSCredential object
                     $credential = New-Object System.Management.Automation.PSCredential($username, $password)
 
-                    # Get the VPC DNS server.
-                    $dnsclient = Get-DnsClientServerAddress -AddressFamily IPv4 | Where-Object {$_.ServerAddresses.Count -gt 0} | Select-Object -First 1
+                    # The following block may be executed in all instances concurrently.
+                    # There are cases where duplicate AD security groups got created. 
+                    # So it is advisable to use one instance at a time.
+                    # Check for AD security group existence before creating.
+                    Write-Output ("Creating new AD security group :{0}" -f $gMSASecurityGroup)
+                    $group = Get-ADGroup -Filter "Name -eq `"$gMSASecurityGroup`""
+                    if($null -eq $group) {
+                        New-ADGroup -Name $gMSASecurityGroup -SamAccountName $gMSASecurityGroup -GroupScope DomainLocal -Credential $credential
+                    } else {
+                        Write-Output "AD Security group:$gMSASecurityGroup exists already."
+                    }
 
-                    # During retry, we should avoid adding duplicate DNS servers, if it was already added in the previous attempt.
-                    # VPC DNS server is the last one in the list.
-                    $vpcdns = $dnsclient.ServerAddresses | select -last 1
-                
-                    # Set up the IPv4 address of the AD DNS server as the first DNS server on this machine
-                    $dnsserverstoupdate = $("{0},{1}" -f $ipdns, $vpcdns)
-                    Write-Output ("Adding AD DNS server addresses :{0} to the IPV4 interface Index:{1}." -f $dnsserverstoupdate, $dnsclient.InterfaceIndex)
-                    Set-DnsClientServerAddress -InterfaceIndex $dnsclient.InterfaceIndex -ServerAddresses $dnsserverstoupdate
-
-                    # Join the domain
-                    Add-Computer -DomainName $domain -Credential $credential
-
-                    # Install AD Module
-                    Install-WindowsFeature RSAT-AD-PowerShell
+                    $hostname = Invoke-Expression -Command "Hostname"
+                    $computer = Get-ADComputer -Filter "Name -eq `"$hostname`"" -Credential $credential
+                    Write-Output ("Adding host :{0} to the AD security group :{1}" -f $computer.DistinguishedName, $gMSASecurityGroup)
+                    Add-ADGroupMember -Identity $group.ObjectGUID -Members $computer.DistinguishedName -Credential $credential
 
                     Restart-Computer -Force
+
                 } catch [Exception] {
                     Write-Output $_.Exception.ToString()
                     Write-Output "Command execution failed."

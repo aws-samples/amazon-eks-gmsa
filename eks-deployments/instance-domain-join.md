@@ -39,3 +39,17 @@ aws ssm create-association --name $domainjoinSSMdoc --document-version 1 --targe
 # Validate the association is created
 aws ssm list-associations --association-filter-list "key=Name, value=$domainjoinSSMdoc"
 ```
+
+## 4. Create and join gMSA AD security group
+### Concurrent execution will result into duplicate AD group creation. Hence this needs to be run one instance at a time.
+```powershell
+aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names $autoScalingGroup --query "AutoScalingGroups[*].Instances[*].InstanceId" --output text
+
+##### ACTION REQUIRED - START #####
+# Replace XXXXX with each of the above instance id.
+# You need to send the following commands one by one.
+$commandId = aws ssm send-command --document-name $adGroupCreateSSMdoc --targets "Key=InstanceIds, Values=XXXXX" --parameters "ADSecurityGroup=$gMSAADSecurityGroup" --query "Command.CommandId" --output text
+
+aws ssm list-command-invocations --command-id $commandId
+##### ACTION REQUIRED - END #####
+```

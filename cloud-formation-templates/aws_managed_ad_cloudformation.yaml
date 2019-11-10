@@ -23,7 +23,7 @@ Metadata:
       - Label:
           default: Active Directory Settings
         Parameters:
-          - DirectoryName
+          - DirectoryNameParameter
           - Edition
           - ShortName
       - Label:
@@ -33,7 +33,7 @@ Metadata:
           - Subnets
 
 Parameters:
-  DirectoryName:
+  DirectoryNameParameter:
     Type: AWS::SSM::Parameter::Value<String>
     Default: ""
     Description: "The fully qualified domain name for the AWS Managed Microsoft AD directory(Example: corp.example.com)."
@@ -63,9 +63,9 @@ Resources:
   myDirectory:
     Type: "AWS::DirectoryService::MicrosoftAD"
     Properties:
-      Name: !Ref DirectoryName
+      Name: !Ref DirectoryNameParameter
       Edition: !Ref Edition
-      Password: "{{resolve:ssm-secure:gMSA-blog-ADAdminPassword:1}}"
+      Password: "{{resolve:ssm-secure:gMSA-blog-ADUserPassword:1}}"
       ShortName: !Ref ShortName
       VpcSettings:
         SubnetIds: !Ref Subnets

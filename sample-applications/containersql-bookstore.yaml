@@ -21,7 +21,7 @@ metadata:
   name: containersql-bookstore
   namespace: ${NAMESPACE}
 spec:
-  replicas: 3
+  replicas: 1
   selector:
     matchLabels:
       app: containersql-bookstore
@@ -39,7 +39,7 @@ spec:
       serviceAccountName: ${SERVICEACCOUNTNAME}
       containers:
       - image: containersql-bookstore:latest
-        imagePullPolicy: Always
+        imagePullPolicy: Never
         name: containersql-bookstore
         ports:
           - containerPort: 1433

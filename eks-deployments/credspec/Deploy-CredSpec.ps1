@@ -83,18 +83,20 @@ if (!(Get-Command -Name 'kubectl' -ErrorAction:SilentlyContinue)) {
     throw 'kubectl not found'
 }
 
-$k8sNamespace = Invoke-Expression -command "kubectl get namespaces --field-selector metadata.name==$Namespace -o jsonpath='{.items[].metadata.name}'" 2>&1
+Write-Output "Checking namespace : $Namespace"
+$result = Invoke-Expression -command "kubectl get namespaces --field-selector metadata.name==$Namespace -o json" | Out-String | ConvertFrom-Json
 
-if (-not $k8sNamespace) {
+if ($result.items.length -eq 0) {
     Write-Verbose "Creating namespace $Namespace"
     Invoke-Expression -Command "kubectl create namespace $Namespace"
 }
 
-$tempaccount = Invoke-Expression -command "kubectl get serviceaccount -n $Namespace --field-selector metadata.name==$ServiceAccount -o jsonpath='{.items[].metadata.name}'"  2>&1
+Write-Output "Checking Serviceaccount:$ServiceAccount in namespace : $Namespace"
+$result = Invoke-Expression -command "kubectl get serviceaccount -n $Namespace --field-selector metadata.name==$ServiceAccount -o json" | Out-String | ConvertFrom-Json
 
-if (-not $tempaccount) {
+if ($result.items.length -eq 0) {
     Write-Verbose "Creating Serviceaccount $ServiceAccount"
-    Invoke-Expression -Command "kubectl create Serviceaccount $ServiceAccount -n $Namespace"
+    Invoke-Expression -Command "kubectl create serviceaccount $ServiceAccount -n $Namespace"
 }
 
 $credSpecContent = Get-Content -Path $CredSpecFile
