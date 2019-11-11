@@ -124,6 +124,7 @@ Resources:
                     $group = Get-ADGroup -Filter "Name -eq `"$gMSASecurityGroup`""
                     if($null -eq $group) {
                         New-ADGroup -Name $gMSASecurityGroup -SamAccountName $gMSASecurityGroup -GroupScope DomainLocal -Credential $credential
+                        $group = Get-ADGroup -Filter "Name -eq `"$gMSASecurityGroup`""
                     } else {
                         Write-Output "AD Security group:$gMSASecurityGroup exists already."
                     }

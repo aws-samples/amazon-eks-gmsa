@@ -17,7 +17,8 @@ AWSTemplateFormatVersion: '2010-09-09'
 
 Description: This example template describes an Amazon EC2 Systems Manager document.
   It contains a sample script that can be used to join an EC2 instance to an Active
-  Directory domain. This document uses the domain user name and password that is stored in the SSM parameter. 
+  Directory domain and add to an existing AD security group. 
+  This document uses the domain user name and password that is stored in the SSM parameter. 
 
 Metadata:
   "AWS::CloudFormation::Interface":
@@ -30,6 +31,10 @@ Metadata:
           - ADUserNameParameter
           - ADUserPasswordParameter
           - ADDNSIPAddressesParameter
+      - Label:
+          default: gMSA Settings
+        Parameters:
+          - gMSAADSecurityGroup
 
 Parameters:
 
@@ -58,6 +63,10 @@ Parameters:
     MaxLength: '1024'
     MinLength: '1'
     Type: AWS::SSM::Parameter::Value<String>
+
+  gMSAADSecurityGroup:
+    Type: String
+    Description: 'Active Directory security group to join the instance, that controls access to the gMSA password.'
 
 Resources:
 
@@ -89,6 +98,10 @@ Resources:
             type: String
             default: !Ref ADDNSIPAddressesParameter
 
+          ADSecurityGroup:
+            type: String
+            default: !Ref gMSAADSecurityGroup
+
         mainSteps:
 
         - action: aws:runPowerShellScript
@@ -108,6 +121,8 @@ Resources:
                     $username = "{0}\{1}" -f $domain, "{{ADUserName}}"
                     $password = (Get-SSMParameterValue -Name "{{ADUserPasswordParam}}" -WithDecryption $True).Parameters[0].Value | ConvertTo-SecureString -asPlainText -Force
                     $ipdns = "{{ADDNSIPAddresses}}"
+
+                    $gMSASecurityGroup = "{{ADSecurityGroup}}"
 
                     # Create a System.Management.Automation.PSCredential object
                     $credential = New-Object System.Management.Automation.PSCredential($username, $password)
@@ -129,6 +144,19 @@ Resources:
 
                     # Install AD Module
                     Install-WindowsFeature RSAT-AD-PowerShell
+
+                    Write-Output ("Checking the AD security group :{0}" -f $gMSASecurityGroup)
+                    $group = Get-ADGroup -Filter "Name -eq `"$gMSASecurityGroup`""
+
+                    if($group) {
+                      Write-Output "AD security group exists. Proceeding to add the computer to the AD security group."
+                      $hostname = Invoke-Expression -Command "Hostname"
+                      $computer = Get-ADComputer -Filter "Name -eq `"$hostname`"" -Credential $credential
+                      Write-Output ("Adding host :{0} to the AD security group :{1}" -f $computer.DistinguishedName, $gMSASecurityGroup)
+                      Add-ADGroupMember -Identity $group.ObjectGUID -Members $computer.DistinguishedName -Credential $credential
+                    } else {
+                      Write-Output ("AD security group :{0} don't exist. You should create and then add the computer to that group." -f $gMSASecurityGroup)
+                    }
 
                     Restart-Computer -Force
                 } catch [Exception] {

@@ -40,8 +40,9 @@ aws ssm create-association --name $domainjoinSSMdoc --document-version 1 --targe
 aws ssm list-associations --association-filter-list "key=Name, value=$domainjoinSSMdoc"
 ```
 
-## 4. Create and join gMSA AD security group
-### Concurrent execution will result into duplicate AD group creation. Hence this needs to be run one instance at a time.
+## 4. Create and join gMSA AD security group (Optional)
+*If the AD security group exists already prior to domain join, the worker instance will be added to that security group during domain join. Otherwise, you need to execute this document to create and join AD. AD security group creation shouldn't be executed concurrently. Concurrent execution will result into duplicate AD group creation. Hence this needs to be run one instance at a time. This SSM document shoudn't be attached to autoscaling group*
+
 ```powershell
 aws autoscaling describe-auto-scaling-groups --auto-scaling-group-names $autoScalingGroup --query "AutoScalingGroups[*].Instances[*].InstanceId" --output text
 

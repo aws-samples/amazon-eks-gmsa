@@ -79,7 +79,7 @@ aws ssm put-parameter --name "$dnsIPAddressesParam" --value  $dnsIPAddresses --t
 ### Generate SSM Documents
 * GMSA-DomainJoin-Document
 ```powershell
-$domainjoinSSMStack = aws cloudformation create-stack --stack-name gmsaDomainJoinSSM --template-body file://ssm-document-domain-join.yaml --parameters ParameterKey=DirectoryNameParameter,ParameterValue="$directoryNameParam" ParameterKey=ADUserNameParameter,ParameterValue="$adUserParam" ParameterKey=ADUserPasswordParameter,ParameterValue="$adUserPasswordParam" ParameterKey=ADDNSIPAddressesParameter,ParameterValue="$dnsIPAddressesParam" --output text
+$domainjoinSSMStack = aws cloudformation create-stack --stack-name gmsaDomainJoinSSM --template-body file://ssm-document-domain-join.yaml --parameters ParameterKey=DirectoryNameParameter,ParameterValue="$directoryNameParam" ParameterKey=ADUserNameParameter,ParameterValue="$adUserParam" ParameterKey=ADUserPasswordParameter,ParameterValue="$adUserPasswordParam" ParameterKey=ADDNSIPAddressesParameter,ParameterValue="$dnsIPAddressesParam" ParameterKey=gMSAADSecurityGroup,ParameterValue="$gMSAADSecurityGroup" --output text
  
 aws cloudformation describe-stack-events --stack-name $domainjoinSSMStack
  
