@@ -122,7 +122,7 @@ Out-File -FilePath $tempFile -InputObject $applicationContent -Force
 if($DryRun) {
     Write-Output ("ASP .NET Core mvc application deployment file is generated at :{0}" -f $tempFile)
 } else {
-    Write-Output ("Deplying ASP .NET Core mvc application.")
+    Write-Output ("Deploying ASP .NET Core mvc application.")
     Invoke-Expression -Command "kubectl apply -f $tempFile"
     Remove-Item -Path $tempFile -Force
 }

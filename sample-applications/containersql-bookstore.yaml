@@ -13,7 +13,7 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-apiVersion: apps/v1beta1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   labels:
@@ -33,9 +33,10 @@ spec:
         app: containersql-bookstore
         tier: backend
         track: stable
-      annotations:
-        pod.alpha.windows.kubernetes.io/gmsa-credential-spec-name: ${CREDSPECRESOURCE}
     spec:
+      securityContext:
+        windowsOptions:
+          gmsaCredentialSpecName: ${CREDSPECRESOURCE}
       serviceAccountName: ${SERVICEACCOUNTNAME}
       containers:
       - image: containersql-bookstore:latest

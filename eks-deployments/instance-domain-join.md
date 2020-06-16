@@ -10,6 +10,8 @@ This document gives list of steps to enable gMSA feature-gates and to attach to 
 BootstrapArguments: --feature-gates="WindowsGMSA=true"
 ```
 
+*gMSA is a beta feature in Kubernetes 1.16 and stable from Kubernetes 1.18 onwards. Hence, the feature flag is enabled by default from 1.16 onwards, so the above step is not required for 1.16 onwards.* 
+
 ```powershell
 ##### ACTION REQUIRED - START #####
 $eksWindowsStack = "xxxxx" # Name of the Cloudformation stack that created EKS Windows worker nodes.
@@ -37,6 +39,9 @@ aws iam attach-role-policy --role-name $nodeInstanceRole --policy-arn arn:aws:ia
 aws ssm create-association --name $domainjoinSSMdoc --document-version 1 --targets "Key=tag:aws:autoscaling:groupName,Values=$autoScalingGroup"
 
 # Validate the association is created
+# The following command will show the status of command. If it is unsuccessful, you can
+# check the error message by checking the 'command history' under 'run command' in the
+# AWS Systems Manager Service. The output of the command can be checked by clicking on the instance id.
 aws ssm list-associations --association-filter-list "key=Name, value=$domainjoinSSMdoc"
 ```
 

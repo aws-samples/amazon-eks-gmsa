@@ -2,6 +2,8 @@
 
 This repository contains cloudformation templates, powershell scripts, kubernetes deployment configurations and sample applications required to set up AWS managed Active Directory and gMSA account setup to demonstrate gMSA end-to-end workflow with Amazon Elastic Kubernetes Services (EKS) cluster.
 
+NOTE: gMSA functionality has been validated on EKS v1.14 master with v1.14 worker nodes, v1.16. EKS master with v1.16 worker nodes, v1.17 EKS master with v1.16 & v1.17 worker nodes. v1.15 is pending validation.
+
 # Prerequisites
 * AWS CLI
 * Powershell core
@@ -34,11 +36,11 @@ Follow the instructions from [./amazon-eks-gmsa/eks-deployments/README.md](https
 * CoreDNS config patching
 
 # 4. Deploy Sample Applications
-Follow the instructions from [./amazon-eks-gmsa/sample-applications/README.md](https://github.com/aws-samples/amazon-eks-gmsa/blob/master/sample-applications/README.md)
+Follow the instructions from [./amazon-eks-gmsa/sample-applications/README.md](https://github.com/aws-samples/amazon-eks-gmsa/blob/master/sample-applications/README.md) for launching an online bookstore application. Another simple application that uses gMSA credentials to open web service can be launched following the instructions from [./amazon-eks-gmsa/sample-applications/IIS-auth-application/README.md](https://github.com/aws-samples/amazon-eks-gmsa/blob/master/sample-applications/IIS-auth-application/README.md)
 
 # 5. Troubleshooting
-For troubleshooting, please follow the steps [here](https://docs.microsoft.com/en-us/virtualization/windowscontainers/manage-containers/gmsa-troubleshooting).
- 
+For troubleshooting, please follow the steps [here](https://docs.microsoft.com/en-us/virtualization/windowscontainers/manage-containers/gmsa-troubleshooting) and refer kubernetes official documentation [here](https://kubernetes.io/docs/tasks/configure-pod-container/configure-gmsa/).
+
 ## License
 
 This project is licensed under the MIT-0 License.
