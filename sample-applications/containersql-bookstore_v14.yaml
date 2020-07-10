@@ -1,4 +1,4 @@
-# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this
 # software and associated documentation files (the "Software"), to deal in the Software
@@ -13,54 +13,62 @@
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE
 # SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
-apiVersion: apps/v1
+apiVersion: apps/v1beta1
 kind: Deployment
 metadata:
   labels:
-    run: containermvc-web
-  name: containermvc-web
+    run: containersql-bookstore
+  name: containersql-bookstore
   namespace: ${NAMESPACE}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      app: containermvc-web
-      tier: frontend
+      app: containersql-bookstore
+      tier: backend
       track: stable
   template:
     metadata:
       labels:
-        app: containermvc-web
-        tier: frontend
+        app: containersql-bookstore
+        tier: backend
         track: stable
+      annotations:
+        pod.alpha.windows.kubernetes.io/gmsa-credential-spec-name: ${CREDSPECRESOURCE}
     spec:
-      securityContext:
-        windowsOptions:
-          gmsaCredentialSpecName: ${CREDSPECRESOURCE}
       serviceAccountName: ${SERVICEACCOUNTNAME}
       containers:
-      - image: containermvc-web:latest
+      - image: containersql-bookstore:latest
         imagePullPolicy: Never
-        name: containermvc-web
+        name: containersql-bookstore
+        ports:
+          - containerPort: 1433
         env:
-          - name: connectionstring
-            value: 'Server=containersql-bookstore-service; Database = Bookstore; Trusted_Connection=true;'
+          - name: ACCEPT_EULA
+            value: 'Y'
+          - name: SA_PASSWORD
+            valueFrom:
+              secretKeyRef:
+                name: mssql
+                key : password
+          - name: gMSA_User
+            value: '${GMSAUSER}'
       nodeSelector:
         beta.kubernetes.io/os: windows
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: containermvc-web-service
+  name: containersql-bookstore-service
   namespace: ${NAMESPACE}
 spec:
   ports:
-  - port: 80
+  - port: 1433
     protocol: TCP
-    targetPort: 80
+    targetPort: 1433
   selector:
-    app: containermvc-web
-    tier: frontend
+    app: containersql-bookstore
+    tier: backend
     track: stable
   sessionAffinity: None
   type: LoadBalancer

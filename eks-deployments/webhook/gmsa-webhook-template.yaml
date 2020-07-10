@@ -76,7 +76,7 @@ spec:
         beta.kubernetes.io/os: linux
       containers:
       - name: ${NAME}
-        image: wk88/k8s-gmsa-webhook:v1.14
+        image: wk88/k8s-gmsa-webhook:${WEBHOOKIMAGE}
         imagePullPolicy: IfNotPresent
         readinessProbe:
           httpGet:

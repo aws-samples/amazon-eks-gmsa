@@ -1,4 +1,4 @@
-# Copyright 2019 Amazon.com, Inc. or its affiliates. All Rights Reserved.
+# Copyright 2020 Amazon.com, Inc. or its affiliates. All Rights Reserved.
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy of this
 # software and associated documentation files (the "Software"), to deal in the Software
@@ -16,22 +16,20 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  labels:
-    run: containermvc-web
-  name: containermvc-web
+  name: windows-server-iis
   namespace: ${NAMESPACE}
 spec:
-  replicas: 1
   selector:
     matchLabels:
-      app: containermvc-web
-      tier: frontend
+      app: windows-server-iis
+      tier: backend
       track: stable
+  replicas: 1
   template:
     metadata:
       labels:
-        app: containermvc-web
-        tier: frontend
+        app: windows-server-iis
+        tier: backend
         track: stable
     spec:
       securityContext:
@@ -39,19 +37,19 @@ spec:
           gmsaCredentialSpecName: ${CREDSPECRESOURCE}
       serviceAccountName: ${SERVICEACCOUNTNAME}
       containers:
-      - image: containermvc-web:latest
+      - name: windows-server-iis
+        image: iis-auth-app:latest
+        ports:
+        - name: http
+          containerPort: 80
         imagePullPolicy: Never
-        name: containermvc-web
-        env:
-          - name: connectionstring
-            value: 'Server=containersql-bookstore-service; Database = Bookstore; Trusted_Connection=true;'
       nodeSelector:
-        beta.kubernetes.io/os: windows
+        kubernetes.io/os: windows
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: containermvc-web-service
+  name: windows-server-iis-service
   namespace: ${NAMESPACE}
 spec:
   ports:
@@ -59,8 +57,8 @@ spec:
     protocol: TCP
     targetPort: 80
   selector:
-    app: containermvc-web
-    tier: frontend
+    app: windows-server-iis
+    tier: backend
     track: stable
   sessionAffinity: None
   type: LoadBalancer

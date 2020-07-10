@@ -164,7 +164,7 @@ Write-Verbose 'Creating secret with CA certificate and server certificate'
 $cmd = "kubectl create secret generic $SecretName " + `
             "--from-file=key.pem=`"$serverCertificateKeyFilePath`" " + `
             "--from-file=cert.pem=`"$serverCertificateFilePath`" " + `
-            "--dry-run -o yaml | " + `
+            "--dry-run=client -o yaml | " + `
                 "kubectl -n $Namespace apply -f -"
 Write-Verbose $cmd
 Invoke-Expression -Command $cmd
