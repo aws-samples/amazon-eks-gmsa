@@ -161,10 +161,10 @@ Write-Verbose 'Writing signed certificate'
 Invoke-Expression -Command "Write-Output `"$serverCertificate`" | openssl base64 -d -A -out `"$serverCertificateFilePath`""
 
 Write-Verbose 'Creating secret with CA certificate and server certificate'
-$cmd = "kubectl create secret generic $SecretName " + `
+$cmd = "kubectl -n $Namespace create secret generic $SecretName " + `
             "--from-file=key.pem=`"$serverCertificateKeyFilePath`" " + `
             "--from-file=cert.pem=`"$serverCertificateFilePath`" " + `
-            "--dry-run=client -o yaml | " + `
+            "-o yaml | " + `
                 "kubectl -n $Namespace apply -f -"
 Write-Verbose $cmd
 Invoke-Expression -Command $cmd
