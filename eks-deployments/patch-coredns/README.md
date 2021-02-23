@@ -22,8 +22,8 @@ data:
         health
         kubernetes cluster.local in-addr.arpa ip6.arpa {
         pods insecure
-        #Note that the keyword "upstream" is deprecated starting from Kubernetes 1.18,
-        #refer to https://github.com/aws/containers-roadmap/issues/1115 for more detail
+        # Note that the keyword "upstream" is deprecated starting from Kubernetes 1.18,
+        # refer to https://github.com/aws/containers-roadmap/issues/1115 for more detail
         upstream
         fallthrough in-addr.arpa ip6.arpa
         }
