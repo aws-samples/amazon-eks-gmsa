@@ -28,6 +28,8 @@ aws ssm list-command-invocations --filter key=DocumentName,value=$domainjoinSSMd
 # If the group doesn't exist, it'll create a new one and then adds the instance to that AD group.
 # You can execute the ssmdomain join document on-demand on that instnace id.
 # To retry on failed instance (replace XXXXX with failed instance id)
+# If you follow the step "Create and join gMSA AD security group", the instance will be joined to the domain already.
+# Here you will be seeing an error "Cannot add computer XXXXX to domain 'gmsa.blog.corp.com' because it is already in that domain.", which is expected. Ignore the error and continue.
 $commandId = aws ssm send-command --document-name $domainjoinSSMdoc --targets "Key=InstanceIds, Values=XXXXX" --query "Command.CommandId" --output text
 
 aws ssm list-command-invocations --command-id $commandId

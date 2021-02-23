@@ -2,7 +2,7 @@
 
 This repository contains cloudformation templates, powershell scripts, kubernetes deployment configurations and sample applications required to set up AWS managed Active Directory and gMSA account setup to demonstrate gMSA end-to-end workflow with Amazon Elastic Kubernetes Services (EKS) cluster.
 
-NOTE: gMSA functionality has been validated on EKS v1.14 master with v1.14 worker nodes, v1.16. EKS master with v1.16 worker nodes, v1.17 EKS master with v1.16 & v1.17 worker nodes. v1.15 is pending validation.
+NOTE: gMSA functionality has been validated on v1.16 EKS master with v1.16 worker nodes, v1.17 EKS master with v1.16 & v1.17 worker nodes, v1.18 EKS master with v1.18 worker nodes, and v1.19 EKS master with v1.19 worker nodes.
 
 # Prerequisites
 * AWS CLI
