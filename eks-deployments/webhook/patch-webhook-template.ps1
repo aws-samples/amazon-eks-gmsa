@@ -48,24 +48,12 @@ $kubeConfig = ConvertFrom-Json -InputObject $ret
 $clusterConfig = $kubeConfig.clusters[0].cluster
 $CaBundle = $clusterConfig."certificate-authority-data"
 
-# Get the Server's Kubernetes Version
-$cmd = 'kubectl version --short=true -o json'
-[string]$ret = Invoke-Expression -Command $cmd
-$fullVersion = ConvertFrom-Json -InputObject $ret
-$serverVersion = $fullVersion.serverVersion.minor
-
-$webhookVersion = 'latest'
-if ($serverVersion -lt 16) {
-    $webhookVersion='v1.14'
-}
-
 Write-Verbose 'Constructing new deployment YAML content'
 $newTemplate = (Get-Content -Path $DeploymentTemplateFilePath) | ForEach-Object {
     $_ -replace '\${CA_BUNDLE}', $CaBundle `
        -replace '\${NAME}', $ServiceName `
        -replace '\${SECRETNAME}', $SecretName `
-       -replace '\${NAMESPACE}', $Namespace `
-       -replace '\${WEBHOOKIMAGE}', $webhookVersion
+       -replace '\${NAMESPACE}', $Namespace
 }
 
 Write-Verbose ('Updating deployment YAML: {0}' -f $OutputFilePath)
