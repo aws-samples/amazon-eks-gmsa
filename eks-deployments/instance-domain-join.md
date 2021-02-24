@@ -1,17 +1,7 @@
 # EKS Windows Worker changes
-This document gives list of steps to enable gMSA feature-gates and to attach to domain join SSM document.
+This document gives list of steps to attach to domain join SSM document.
 
-## 1. Launch EKS Windows worker instances with gMSA feature-gates
-*gMSA is an alpha feature in Kubernetes 1.14. For details refer [here](https://kubernetes.io/docs/reference/command-line-tools-reference/feature-gates/)*
-*For alpha features we need to enable the feature-gates.* 
-
-```powershell
-# In EKS Windows worker CloudFormation stack, paste the following argument
-BootstrapArguments: --feature-gates="WindowsGMSA=true"
-```
-
-*gMSA is a beta feature in Kubernetes 1.16 and stable from Kubernetes 1.18 onwards. Hence, the feature flag is enabled by default from 1.16 onwards, so the above step is not required for 1.16 onwards.* 
-
+## 1. Launch EKS Windows worker instances
 ```powershell
 ##### ACTION REQUIRED - START #####
 $eksWindowsStack = "xxxxx" # Name of the Cloudformation stack that created EKS Windows worker nodes.

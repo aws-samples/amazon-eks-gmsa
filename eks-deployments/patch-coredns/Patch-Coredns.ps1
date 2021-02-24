@@ -55,9 +55,21 @@ if (!(Get-Command -Name 'kubectl' -ErrorAction:SilentlyContinue)) {
     throw 'kubectl not found'
 }
 
+$cmd = 'kubectl version --short=true -o json'
+[string]$ret = Invoke-Expression -Command $cmd
+$clusterVersionObj = ConvertFrom-Json -InputObject $ret
+$serverVersion = $clusterVersionObj.serverVersion.minor
+
+# The keyword 'upstream' is decprecated starting from Kubernetes 1.18
+$upstreamKey = 'upstream'
+if ($serverVersion -ge 18) {
+    $upstreamKey = ''
+}
+
 $patchContent = (Get-Content -Path $CorednsTemplateConfig) | ForEach-Object {
     $_ -replace '\${ACTIVEDIRECTORYDNS}', $ActiveDirectoryDNS `
-       -replace '\${DNSSERVERIPS}', $DNSServerIPs
+       -replace '\${DNSSERVERIPS}', $DNSServerIPs `
+       -replace '\${UPSTREAM}', $upstreamKey
 }
 
 $tempFile = [System.IO.Path]::Combine($PSScriptRoot, "patch.yaml")
