@@ -93,7 +93,7 @@ if (-not (Test-Path -Path $pathTemplateScript)) {
 Invoke-Expression -Command "& '$createCertScript' -ServiceName $ServiceName -SecretName $SecretName -Namespace $Namespace"
 
 # Verify secret
-Invoke-Expression -Command "kubectl get secret -n $Namespace $SecretName" 2>&1
+Invoke-Expression -Command "kubectl get secret -n $Namespace $SecretName" | Select-String -NotMatch "Warning" 2>&1
 
 # Configure webhook and create deployment file
 Invoke-Expression -Command "& '$pathTemplateScript' -DeploymentTemplateFilePath `"$DeploymentTemplate`" -ServiceName `"$ServiceName`" -Namespace `"$Namespace`" -OutputFilePath `"$Outfile`""
@@ -101,5 +101,15 @@ Invoke-Expression -Command "& '$pathTemplateScript' -DeploymentTemplateFilePath 
 if ($DryRun) {
     Write-Output (Get-Content -Path $Outfile)
 } else {
-    Invoke-Expression -Command "kubectl -n $Namespace apply -f `"$Outfile`"" 2>&1
+    Invoke-Expression -Command "kubectl -n $Namespace apply -f `"$Outfile`"" | Select-String -NotMatch "Warning" 2>&1
+
+    # Verify that both mutating and validating webhooks are installed correctly
+    $CmdOutput = Invoke-Expression -Command "kubectl get mutatingwebhookconfigurations $ServiceName"
+    if (($CmdOutput.IndexOf("Error") -ge 0) -or ($CmdOutput.IndexOf("Not Found") -ge 0)) {
+        Write-Output ($CmdOutput)
+    }
+    $CmdOutput = Invoke-Expression -Command "kubectl get validatingwebhookconfigurations $ServiceName"
+    if (($CmdOutput.IndexOf("Error") -ge 0) -or ($CmdOutput.IndexOf("Not Found") -ge 0)) {
+        Write-Output ($CmdOutput)
+    }
 }

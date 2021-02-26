@@ -13,7 +13,7 @@ $directoryName = aws ssm get-parameter --name $directoryNameParam --query "Param
 # Command to verify coredns configmap
 kubectl get configmap coredns -n kube-system -o yaml
 
-# The sample configmap
+# The sample configmap for Kubernetes 1.16 and 1.17
 apiVersion: v1
 data:
   Corefile: |
@@ -37,5 +37,33 @@ data:
 	cache 30 
 	forward . <<DNSServer1>> <<DNSServer2>>
           } 
+kind: ConfigMap
+
+# The sample configmap starting from Kubernetes 1.18
+# Note that the keyword "upstream" is deprecated starting from Kubernetes 1.18,
+# refer to https://github.com/aws/containers-roadmap/issues/1115 for more detail
+apiVersion: v1
+data:
+  Corefile: |
+    .:53 {
+        errors
+        health
+        kubernetes cluster.local in-addr.arpa ip6.arpa {
+        pods insecure
+
+        fallthrough in-addr.arpa ip6.arpa
+        }
+        prometheus :9153
+        forward . /etc/resolv.conf
+      cache 30
+      loop
+      reload
+      loadbalance
+    }
+    <<ActiveDirectoryname>>:53 {
+	errors
+	cache 30
+	forward . <<DNSServer1>> <<DNSServer2>>
+          }
 kind: ConfigMap
 ```

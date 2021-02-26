@@ -26,13 +26,14 @@ aws ssm list-command-invocations --filter key=DocumentName,value=$domainjoinSSMd
 # https://us-west-2.console.aws.amazon.com/systems-manager/run-command/complete-commands?region=us-west-2 
 # One possible failure could be, "Creating new AD security group". This is due to all the EKS Windows instances will concurrently check whether the AD group exists or not. 
 # If the group doesn't exist, it'll create a new one and then adds the instance to that AD group.
-# You can execute the ssmdomain join document on-demand on that instnace id.
+# You can execute the ssmdomain join document on-demand on that instance id.
 # To retry on failed instance (replace XXXXX with failed instance id)
 $commandId = aws ssm send-command --document-name $domainjoinSSMdoc --targets "Key=InstanceIds, Values=XXXXX" --query "Command.CommandId" --output text
 
 aws ssm list-command-invocations --command-id $commandId
 
 # If the failure is in between (Example: joined AD but not part of AD security group), you've to manually fix that based on the error. The easiest way is, terminate the instance and let autoscaling create a new instance.
+# Also the instance might be joined to the domain already, continue with the process if you observe errors similar to "Cannot add computer XXXXX to domain XXXXX because it is already in that domain." in System Manager.
 ##### ACTION REQUIRED - END #####
 
 # Pick an instance to run the SSM command.
